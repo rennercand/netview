@@ -26,9 +26,9 @@ A API testa PostgreSQL, Redis e R2 antes de ouvir. `/health` serve liveness; `/r
 
 Por escolha explícita do usuário, `/` mostra biblioteca pública somente leitura, sem formulário de login. Apenas vídeos READY do grupo indicado em `PUBLIC_LIBRARY_GROUP_ID` serão publicados. Conta proprietária e HOST devem estar ativos. Nenhum outro grupo é publicado automaticamente. Sem configuração, a API pública responde 503.
 
-O grupo configurado inicialmente é `d7bda340-bec1-47a7-ae2c-e1e683e84b46`. A consulta ao Neon confirmou zero usuários, grupos e mídias antes do deploy: esse UUID reserva o grupo de publicação, mas não cria usuário, catálogo ou vídeos simulados. Para administrar uploads, crie primeiro o administrador com `pnpm admin:create` e variáveis temporárias `ADMIN_EMAIL`/`ADMIN_PASSWORD`, depois substitua `PUBLIC_LIBRARY_GROUP_ID` pelo UUID do grupo real criado. Não há credenciais padrão nem administrador compartilhado.
+O grupo de publicação é `d7bda340-bec1-47a7-ae2c-e1e683e84b46`. Após a decisão de retirar o login, foi preparado um proprietário técnico não ADMIN e uma associação HOST nesse grupo, com senha aleatória inacessível pela interface. `MVP_OPEN_UPLOADS=true` na API permite envio/edição sem sessão exclusivamente nesse grupo. A quota inicial é 5 GiB; não é um limite financeiro do R2. Não existe login compartilhado nem liberação das APIs de usuários. Para voltar à escrita autenticada, remova/desative a flag e reative a interface privada em uma mudança posterior.
 
-As APIs públicas permitem catálogo/busca, capa e concessão de reprodução de 120 segundos diretamente ao R2. O bucket permanece privado, mas qualquer visitante pode reproduzir o grupo publicado. Não publique conteúdo confidencial nesse grupo. Uploads, edição e gerenciamento continuam autenticados em `/manage`.
+As APIs públicas permitem catálogo/busca, capa e concessão de reprodução de 120 segundos diretamente ao R2. O bucket permanece privado, mas qualquer visitante pode reproduzir o grupo publicado. Não publique conteúdo confidencial nesse grupo. A área `/upload` permite envio, retomada, cancelamento e edição sem login, como solicitado. `/manage` redireciona para `/upload`. Qualquer visitante pode consumir armazenamento dentro da quota. Outros grupos e administração de usuários continuam protegidos.
 
 ## Validação e Vercel
 

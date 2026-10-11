@@ -10,6 +10,7 @@ const result = spawnSync("pnpm", ["exec", "playwright", "test"], {
   env: {
     ...process.env,
     RUN_E2E: "1",
+    MVP_OPEN_UPLOADS: "true",
     NODE_ENV: "test",
     APP_ORIGIN: "http://localhost:5173",
     PORT: "3000",

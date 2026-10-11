@@ -101,16 +101,11 @@ test.afterAll(async () => {
   storage.close();
   await rm(dir, { recursive: true, force: true });
 });
-test("login, upload direto, série, reprodução com seek e logout", async ({
+test("áreas sem login: envio direto, edição, série e reprodução", async ({
   page,
 }) => {
-  await page.goto("/manage");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Senha", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Biblioteca", exact: true }),
-  ).toBeVisible();
+  await page.goto("/upload");
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await page
     .getByLabel("Arquivo MP4")
     .setInputFiles(join(dir, "Família - S01E02 - Festa.mp4"));
@@ -119,34 +114,11 @@ test("login, upload direto, série, reprodução com seek e logout", async ({
     page.getByText("Upload concluído. Extraindo metadados e capa…"),
   ).toBeVisible({ timeout: 30000 });
   await expect(
-    page.getByRole("heading", { name: "Família · Temporada 1" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Reproduzir", exact: true }),
-  ).toBeEnabled({ timeout: 30000 });
-  await page.getByRole("button", { name: "Reproduzir", exact: true }).click();
-  const video = page.locator("video");
-  await expect(video).toBeVisible();
-  await expect
-    .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
-    .toBeGreaterThanOrEqual(1);
-  await video.evaluate(async (v: HTMLVideoElement) => {
-    await v.play();
-  });
-  await expect
-    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
-    .toBeGreaterThan(0.1);
-  await video.evaluate((v: HTMLVideoElement) => {
-    v.currentTime = 2;
-  });
-  await expect
-    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
-    .toBeGreaterThanOrEqual(2);
-  const horizontal = await page.evaluate(
-    () => document.documentElement.scrollWidth > innerWidth,
-  );
-  expect(horizontal).toBe(false);
-  await page.getByRole("button", { name: "Fechar player" }).click();
+    page.getByText("Família - S01E02 - Festa.mp4 · READY"),
+  ).toBeVisible({ timeout: 30000 });
+  await page.getByLabel("Título", { exact: true }).fill("Festa editada");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByText("Alterações salvas")).toBeVisible();
   await page.goto("/");
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await expect(
@@ -171,8 +143,6 @@ test("login, upload direto, série, reprodução com seek e logout", async ({
     )
     .toBeGreaterThan(0.1);
   await page.goto("/manage");
-  await page.getByRole("button", { name: "Sair", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Entrar", exact: true }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/upload$/);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });

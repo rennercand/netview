@@ -8,14 +8,19 @@ type Identity = Prisma.SessionGetPayload<{
 declare module "fastify" {
   interface FastifyRequest {
     identity: Identity | null;
+    mvpActor: NonNullable<Identity["user"]> | null;
+    mvpGroupId: string | null;
   }
 }
 export function installAuth(
   app: FastifyInstance,
   db: PrismaClient,
   origin: string,
+  mvp: { openUploads?: boolean; publicGroupId?: string } = {},
 ) {
   app.decorateRequest("identity", null);
+  app.decorateRequest("mvpActor", null);
+  app.decorateRequest("mvpGroupId", null);
   app.addHook("preHandler", async (req) => {
     const path = req.url.split("?")[0];
     const mutating = !["GET", "HEAD", "OPTIONS"].includes(req.method);
@@ -43,6 +48,35 @@ export function installAuth(
       path.startsWith("/api/v1/public/")
     )
       return;
+    const openRoute =
+      (req.method === "GET" &&
+        ["/api/v1/households", "/api/v1/uploads", "/api/v1/media"].includes(
+          path,
+        )) ||
+      (req.method === "POST" && path === "/api/v1/uploads/init") ||
+      (req.method === "GET" &&
+        /^\/api\/v1\/uploads\/[0-9a-f-]+$/i.test(path)) ||
+      (req.method === "POST" &&
+        /^\/api\/v1\/uploads\/[0-9a-f-]+\/(part-url|complete|abort)$/i.test(
+          path,
+        )) ||
+      (["GET", "PATCH"].includes(req.method) &&
+        /^\/api\/v1\/media\/[0-9a-f-]+$/i.test(path));
+    if (mvp.openUploads && openRoute) {
+      ensure(mvp.publicGroupId, 503, "Grupo de envio não configurado");
+      const group = await db.household.findFirst({
+        where: {
+          id: mvp.publicGroupId,
+          owner: { status: "ACTIVE" },
+          memberships: { some: { active: true, role: "HOST" } },
+        },
+        include: { owner: true },
+      });
+      ensure(group, 503, "Grupo de envio indisponível");
+      req.mvpActor = { ...group.owner, isAdmin: false };
+      req.mvpGroupId = group.id;
+      return;
+    }
     const raw = req.cookies.fs_session;
     ensure(raw, 401, "Login necessário");
     const session = await db.session.findUnique({
@@ -76,6 +110,7 @@ export function installAuth(
   });
 }
 export function user(req: FastifyRequest) {
+  if (req.mvpActor) return req.mvpActor;
   ensure(req.identity?.user, 401, "Login necessário");
   return req.identity.user;
 }
@@ -85,6 +120,8 @@ export async function groupAccess(
   groupId: string,
   mode: "view" | "manage" | "upload" = "view",
 ) {
+  if (req.mvpGroupId)
+    ensure(groupId === req.mvpGroupId, 404, "Grupo não encontrado");
   const actor = user(req);
   const membership = await db.membership.findUnique({
     where: { userId_groupId: { userId: actor.id, groupId } },

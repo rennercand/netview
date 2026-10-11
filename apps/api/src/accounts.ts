@@ -140,9 +140,11 @@ export async function accountRoutes(
   );
   app.get("/households", async (req) =>
     db.household.findMany({
-      where: user(req).isAdmin
-        ? {}
-        : { memberships: { some: { userId: user(req).id, active: true } } },
+      where: req.mvpGroupId
+        ? { id: req.mvpGroupId }
+        : user(req).isAdmin
+          ? {}
+          : { memberships: { some: { userId: user(req).id, active: true } } },
       select: {
         id: true,
         name: true,

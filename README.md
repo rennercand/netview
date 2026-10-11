@@ -136,6 +136,6 @@ Fase 2: pareamento com código de uso único e credencial DEVICE restrita, `/tv`
 
 ## MVP público e Railway
 
-Por solicitação do usuário, a página inicial abre a biblioteca pública somente leitura do grupo configurado em `PUBLIC_LIBRARY_GROUP_ID`. Apenas vídeos prontos desse grupo são publicados. Uploads e administração continuam autenticados em `/manage`. Sem configurar o grupo, a API pública retorna indisponibilidade.
+Por solicitação do usuário, a página inicial abre a biblioteca pública somente leitura do grupo configurado em `PUBLIC_LIBRARY_GROUP_ID`. Apenas vídeos prontos desse grupo são publicados. No modo temporário `MVP_OPEN_UPLOADS=true`, `/upload` permite envio e edição sem login somente no grupo do MVP; `/manage` redireciona para essa área. Administração de usuários permanece protegida. Sem configurar o grupo, a API pública retorna indisponibilidade.
 
-Frontend publicado: https://family-stream-faguedes.vercel.app. O backend está publicado no Railway e conectado à Vercel; o catálogo começa vazio. A criação do primeiro administrador e o envio de vídeos ainda precisam ser realizados. Veja [Railway Free](docs/RAILWAY.md) para containers API/worker, Redis e credencial necessária, sem assinatura paga.
+Frontend publicado: https://family-stream-faguedes.vercel.app. O backend está publicado no Railway e conectado à Vercel; o catálogo começa vazio. O grupo de ingestão está preparado; basta abrir a área de envio, sem criar conta. Veja [Railway Free](docs/RAILWAY.md) para containers API/worker, Redis e credencial necessária, sem assinatura paga.

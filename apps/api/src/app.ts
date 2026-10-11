@@ -107,7 +107,10 @@ export async function buildApp(
   });
   await app.register(
     async (api) => {
-      installAuth(api, db, config.APP_ORIGIN);
+      installAuth(api, db, config.APP_ORIGIN, {
+        openUploads: config.MVP_OPEN_UPLOADS,
+        publicGroupId: config.PUBLIC_LIBRARY_GROUP_ID,
+      });
       api.get("/health", () => ({ ok: true }));
       api.get("/ready", async () => {
         await db.$queryRaw`SELECT 1`;

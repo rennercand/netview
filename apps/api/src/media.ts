@@ -43,7 +43,7 @@ export function mediaRoutes(
     if (query.groupId) await groupAccess(db, req, query.groupId);
     const where: Prisma.MediaWhereInput = {
       status: { not: "DELETED" },
-      groupId: query.groupId,
+      groupId: req.mvpGroupId || query.groupId,
       group: user(req).isAdmin
         ? undefined
         : { memberships: { some: { userId: user(req).id, active: true } } },
@@ -114,7 +114,9 @@ export function mediaRoutes(
     );
     await groupAccess(db, req, media.groupId, "upload");
     ensure(
-      user(req).isAdmin || media.uploaderId === user(req).id,
+      user(req).isAdmin ||
+        media.uploaderId === user(req).id ||
+        req.mvpGroupId === media.groupId,
       403,
       "Somente dono ou administrador",
     );

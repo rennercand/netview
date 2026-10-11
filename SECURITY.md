@@ -12,3 +12,7 @@
 - Swagger somente em desenvolvimento. Banco/Redis/MinIO local presos ao loopback; produção Neon/R2 e rede interna. Segredos, vídeos, backups e `.env*` não entram no Git (exceto exemplo fictício).
 
 Não publique sem configurar HTTPS, segredos exclusivos, backups e retenção do provedor. Não compartilhe logs de storage que incluam query strings assinadas. O operador R2 deve desativar/redigir query strings nos logs de acesso quando aplicável. Reporte vulnerabilidades por canal privado ao mantenedor; não inclua senhas ou objetos privados em issues públicas.
+
+## Exceção temporária do MVP sem login
+
+Por autorização explícita do usuário, `MVP_OPEN_UPLOADS=true` libera upload multipart, retomada/cancelamento e edição de metadados somente para `PUBLIC_LIBRARY_GROUP_ID`. Qualquer visitante pode consumir a quota e editar/cancelar arquivos desse grupo. A API usa o proprietário técnico do grupo como ator de auditoria, sempre sem privilégios ADMIN; não cria uma sessão compartilhada. O bucket permanece privado e as partes são assinadas com tamanho/validade. Origin, rate limits e reserva de quota permanecem ativos. Administração, sessões, permissões, progresso privado e outros grupos não entram na exceção. A flag ausente/false restaura autenticação das rotas de escrita. O frontend mantém áreas distintas de assistir (`/`) e enviar (`/upload`); `/manage` redireciona para envio.

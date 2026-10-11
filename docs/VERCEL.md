@@ -8,9 +8,9 @@ O arquivo `vercel.json` na raiz agora registra build `pnpm build`, instalação 
 
 `/api/:path*` aponta para `https://api-production-af9e.up.railway.app/api/:path*`. O rewrite vem antes do fallback SPA. O backend usa `NODE_ENV=production` e `APP_ORIGIN=https://family-stream-faguedes.vercel.app`. O domínio Vercel já está autorizado no CORS R2. Não use preview de outra origem para testar uploads/login sem configurar sua origem específica.
 
-A página `/` mostra biblioteca pública somente leitura; `/manage` preserva gerenciamento autenticado. O login Vercel de proteção do projeto foi desativado para permitir acesso à interface pública. Isso não desativa autenticação da API privada.
+A página `/` mostra biblioteca pública somente leitura; `/upload` permite envio e edição sem login no grupo do MVP; `/manage` redireciona para envio. O login Vercel de proteção do projeto foi desativado para permitir acesso à interface pública. Isso não desativa autenticação da API privada.
 
-Os testes HTTPS publicados confirmaram `/` e `/manage` com 200; `/api/v1/health` e `/api/v1/ready` com 200; catálogo público real 200 e vazio; catálogo privado 401. Login, upload direto, processamento, capa e playback Range foram verificados pela API publicada com conta e mídia temporárias e depois limpos; veja [VALIDATION.md](VALIDATION.md). O banco ainda não possui administrador definitivo nem vídeos. Os testes de navegador completos passaram localmente; o navegador remoto continua não verificado.
+Os testes HTTPS publicados confirmaram `/` e `/manage` com 200; `/api/v1/health` e `/api/v1/ready` com 200; catálogo público real 200 e vazio; catálogo privado 401. Login, upload direto, processamento, capa e playback Range foram verificados pela API publicada com conta e mídia temporárias e depois limpos; veja [VALIDATION.md](VALIDATION.md). O grupo do MVP e seu ator técnico não ADMIN estão preparados para ingestão sem login. Os testes de navegador completos passaram localmente; o navegador remoto continua não verificado.
 
 Neon, Redis e credenciais S3 ficam no backend. Não exponha URLs com senha ou chaves em variáveis `VITE_*`. O R2 guarda originais privados; reprodução recebe concessões curtas do backend.
 

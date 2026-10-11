@@ -527,6 +527,103 @@ describe.sequential("MVP real: PostgreSQL, Redis, MinIO e FFmpeg", () => {
       await disabled.close();
     }
   });
+  it("modo MVP permite envio/edição sem sessão apenas no grupo publicado", async () => {
+    const open = await buildApp(
+      db,
+      storage,
+      {
+        NODE_ENV: "test",
+        APP_ORIGIN: origin,
+        DATABASE_URL: process.env.DATABASE_URL!,
+        REDIS_URL: process.env.REDIS_URL!,
+        PORT: 3000,
+        PUBLIC_LIBRARY_GROUP_ID: groupA,
+        MVP_OPEN_UPLOADS: true,
+      },
+      { rateLimitNamespace: `open-mvp:${namespace}:` },
+    );
+    const request = (
+      url: string,
+      method: "GET" | "POST" | "PATCH" = "GET",
+      payload?: Record<string, unknown>,
+      requestOrigin = origin,
+    ) =>
+      open.inject({
+        url: "/api/v1" + url,
+        method,
+        headers: { origin: requestOrigin },
+        payload,
+      });
+    try {
+      const households = await request("/households");
+      expect(households.statusCode).toBe(200);
+      expect(households.json().map((g: { id: string }) => g.id)).toEqual([
+        groupA,
+      ]);
+      expect((await request("/media?groupId=" + groupB)).statusCode).toBe(404);
+      expect(
+        (
+          await request("/uploads/init", "POST", {
+            groupId: groupB,
+            filename: "outside.mp4",
+            size: fixture.length,
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await request(
+            "/uploads/init",
+            "POST",
+            {
+              groupId: groupA,
+              filename: "wrong-origin.mp4",
+              size: fixture.length,
+            },
+            "https://evil.example",
+          )
+        ).statusCode,
+      ).toBe(403);
+      const init = await request("/uploads/init", "POST", {
+        groupId: groupA,
+        filename: "open.mp4",
+        size: fixture.length,
+      });
+      expect(init.statusCode).toBe(201);
+      const id = init.json().id;
+      expect(
+        (await request(`/uploads/${id}/part-url`, "POST", { partNumber: 1 }))
+          .statusCode,
+      ).toBe(200);
+      expect(
+        (await request(`/uploads/${id}/abort`, "POST", {})).statusCode,
+      ).toBe(200);
+      const previous = await db.media.findUniqueOrThrow({
+        where: { id: mediaId },
+      });
+      expect(
+        (
+          await request(`/media/${mediaId}`, "PATCH", {
+            title: "Edição pública MVP",
+          })
+        ).statusCode,
+      ).toBe(200);
+      await db.media.update({
+        where: { id: mediaId },
+        data: { title: previous.title },
+      });
+      for (const path of [
+        "/auth/me",
+        "/admin/users",
+        "/admin/access-requests",
+        "/sessions",
+      ])
+        expect((await request(path)).statusCode).not.toBe(200);
+      expect((await request("/auth/me")).statusCode).toBe(401);
+    } finally {
+      await open.close();
+    }
+  });
   it("bucket é privado e CORS de upload expõe ETag", async () => {
     const u = await db.uploadSession.findUniqueOrThrow({
       where: { id: uploadId },

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import {
   QueryClient,
   QueryClientProvider,
@@ -718,7 +718,7 @@ function PublicLibrary() {
     <>
       <header>
         <h1>Family Stream</h1>
-        <Link to="/manage">Gerenciar</Link>
+        <Link to="/upload">Enviar vídeos</Link>
       </header>
       <main>
         {selected && (
@@ -793,7 +793,131 @@ function PublicLibrary() {
   );
 }
 
-function PrivateApp() {
+function OpenUploadPage() {
+  const groups = useQuery({
+    queryKey: ["open-groups"],
+    queryFn: () => api<Group[]>("/households"),
+  });
+  const catalog = useQuery({
+    queryKey: ["open-edit-media"],
+    queryFn: () => api<{ items: Media[] }>("/media"),
+    refetchInterval: 3000,
+  });
+  return (
+    <>
+      <header>
+        <h1>Enviar vídeos</h1>
+        <Link to="/">Assistir</Link>
+      </header>
+      <main>
+        <ErrorMessage
+          message={groups.error?.message || catalog.error?.message || ""}
+        />
+        {groups.isPending && <p>Carregando…</p>}
+        {groups.data?.length ? (
+          <Uploader
+            groups={groups.data}
+            onDone={() => void catalog.refetch()}
+          />
+        ) : null}
+        <h2>Arquivos enviados</h2>
+        {catalog.data?.items.length === 0 && <p>Nenhum arquivo enviado.</p>}
+        {catalog.data?.items.map((media) => (
+          <OpenMediaEditor
+            key={media.id}
+            media={media}
+            onDone={() => void catalog.refetch()}
+          />
+        ))}
+      </main>
+    </>
+  );
+}
+function OpenMediaEditor({
+  media,
+  onDone,
+}: {
+  media: Media;
+  onDone: () => void;
+}) {
+  const [message, setMessage] = useState("");
+  return (
+    <article>
+      <p>
+        {media.filename} · {media.status}
+      </p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          try {
+            await api(
+              `/media/${media.id}`,
+              {
+                title: data.get("title"),
+                series: data.get("series") || null,
+                season:
+                  data.get("season") === "" ? null : Number(data.get("season")),
+                episode:
+                  data.get("episode") === ""
+                    ? null
+                    : Number(data.get("episode")),
+              },
+              "PATCH",
+            );
+            setMessage("Alterações salvas");
+            onDone();
+          } catch (error) {
+            setMessage((error as Error).message);
+          }
+        }}
+      >
+        <label>
+          Título
+          <input
+            name="title"
+            defaultValue={media.title}
+            required
+            maxLength={200}
+          />
+        </label>
+        <label>
+          Série
+          <input
+            name="series"
+            defaultValue={media.series || ""}
+            maxLength={200}
+          />
+        </label>
+        <label>
+          Temporada
+          <input
+            name="season"
+            type="number"
+            min={0}
+            max={999}
+            defaultValue={media.season ?? ""}
+          />
+        </label>
+        <label>
+          Episódio
+          <input
+            name="episode"
+            type="number"
+            min={0}
+            max={9999}
+            defaultValue={media.episode ?? ""}
+          />
+        </label>
+        <button>Salvar</button>
+      </form>
+      <p role="status">{message}</p>
+      <ErrorMessage message={media.processingError || ""} />
+    </article>
+  );
+}
+
+export function PrivateApp() {
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me") });
   if (me.isPending) return <p>Carregando…</p>;
@@ -811,7 +935,8 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<PublicLibrary />} />
-          <Route path="/manage" element={<PrivateApp />} />
+          <Route path="/upload" element={<OpenUploadPage />} />
+          <Route path="/manage" element={<Navigate to="/upload" replace />} />
           <Route
             path="*"
             element={

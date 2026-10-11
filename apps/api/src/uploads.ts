@@ -123,6 +123,7 @@ export function uploadRoutes(
         status: "OPEN",
         expiresAt: { gt: new Date() },
         media: {
+          groupId: req.mvpGroupId || undefined,
           group: {
             memberships: user(req).isAdmin
               ? undefined
