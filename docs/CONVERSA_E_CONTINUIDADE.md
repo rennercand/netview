@@ -1,5 +1,7 @@
 # Registro da conversa e continuidade
 
+[Chat compartilhado pelo usuário](https://chatgpt.com/s/cx_6acbfeee04cc81918e675d0823fe5ecc)
+
 Atualizado em 11/10/2026. Este documento resume as decisões e o estado confirmado durante o chat; não é uma transcrição integral. Não contém senhas, tokens ou URLs com credenciais.
 
 ## Pedido e preferências do usuário
