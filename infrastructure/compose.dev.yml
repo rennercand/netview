@@ -1,0 +1,109 @@
+name: family-stream-dev
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: family_stream
+      POSTGRES_USER: family
+      POSTGRES_PASSWORD: local-development-only
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U family -d family_stream"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: ["redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  minio:
+    image: bitnamilegacy/minio:2025.4.22-debian-12-r2@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01
+    environment:
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173,http://localhost:8080
+      MINIO_ROOT_USER: family-local
+      MINIO_ROOT_PASSWORD: local-development-only-storage
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: ["minio:/bitnami/minio/data"]
+  storage-init:
+    build:
+      { context: .., dockerfile: infrastructure/Dockerfile, target: services }
+    env_file: ../.env
+    environment:
+      S3_ENDPOINT: http://minio:9000
+    command:
+      [
+        "pnpm",
+        "--filter",
+        "@family/storage",
+        "exec",
+        "tsx",
+        "../../infrastructure/scripts/init-storage.ts",
+      ]
+    depends_on: { minio: { condition: service_started } }
+    restart: on-failure
+  migrate:
+    build:
+      { context: .., dockerfile: infrastructure/Dockerfile, target: services }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://family:local-development-only@postgres:5432/family_stream
+      DIRECT_URL: postgresql://family:local-development-only@postgres:5432/family_stream
+    command: ["pnpm", "db:migrate"]
+    depends_on: { postgres: { condition: service_healthy } }
+  api:
+    build:
+      { context: .., dockerfile: infrastructure/Dockerfile, target: services }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://family:local-development-only@postgres:5432/family_stream
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      APP_ORIGIN: http://localhost:8080
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      storage-init: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/v1/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    build:
+      { context: .., dockerfile: infrastructure/Dockerfile, target: services }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://family:local-development-only@postgres:5432/family_stream
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    command: ["pnpm", "--filter", "@family/worker", "start"]
+    depends_on: { api: { condition: service_healthy } }
+  web:
+    build: { context: .., dockerfile: infrastructure/Dockerfile, target: web }
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: { api: { condition: service_healthy } }
+volumes:
+  postgres:
+  redis:
+  minio:

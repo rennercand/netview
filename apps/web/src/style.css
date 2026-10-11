@@ -1,0 +1,134 @@
+@import "tailwindcss";
+:root {
+  font-family: system-ui, sans-serif;
+  color: #e5edf5;
+  background: #101820;
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+}
+header,
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+h2 {
+  font-size: 1.4rem;
+  margin: 12px 0;
+  font-weight: 650;
+}
+h3 {
+  font-size: 1.2rem;
+  margin: 16px 0;
+}
+h4 {
+  font-weight: 650;
+}
+section,
+article {
+  background: #1a2732;
+  padding: 18px;
+  border: 1px solid #334655;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+label {
+  display: block;
+  margin: 10px 0;
+}
+input,
+select,
+button {
+  font: inherit;
+  padding: 10px;
+  border: 1px solid #567080;
+  border-radius: 5px;
+  background: #223341;
+  color: inherit;
+}
+input,
+select {
+  display: block;
+  max-width: 100%;
+}
+button {
+  cursor: pointer;
+  margin: 5px;
+  background: #23546b;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+video:focus-visible,
+a:focus-visible {
+  outline: 3px solid #63d7fd;
+  outline-offset: 3px;
+}
+.login {
+  max-width: 440px;
+  margin: 50px auto;
+}
+.login input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.error {
+  color: #ffb6a9;
+  margin: 12px 0;
+}
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.grid article {
+  margin: 0;
+}
+.grid img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+video {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  margin-top: 12px;
+}
+.filename {
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+  color: #a9bfcc;
+}
+p {
+  margin: 10px 0;
+}
+code {
+  overflow-wrap: anywhere;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+}

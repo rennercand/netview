@@ -1,0 +1,30 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: corepack enable
+      - run: corepack prepare pnpm@11.25.0 --activate
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm db:generate
+      - run: pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm build
+      - run: docker compose --env-file .env -f infrastructure/compose.dev.yml up -d postgres redis minio
+      - run: pnpm exec tsx --env-file=.env infrastructure/scripts/init-storage.ts
+      - run: docker compose --env-file .env -f infrastructure/compose.dev.yml exec -T postgres createdb -U family family_stream_test
+      - run: pnpm exec tsx --env-file=.env infrastructure/scripts/migrate.ts
+        env:
+          DATABASE_URL: postgresql://family:local-development-only@localhost:5432/family_stream_test
+          DIRECT_URL: postgresql://family:local-development-only@localhost:5432/family_stream_test
+      - run: pnpm exec tsx --env-file=.env infrastructure/scripts/run-integration.ts
+        env:
+          DATABASE_URL: postgresql://family:local-development-only@localhost:5432/family_stream_test
+          DIRECT_URL: postgresql://family:local-development-only@localhost:5432/family_stream_test
+      - run: docker build -f infrastructure/Dockerfile --target web .
