@@ -1,5 +1,7 @@
 # Produção: Neon + R2
 
+O projeto Neon e o bucket R2 já foram criados. Consulte [PROVISIONING.md](PROVISIONING.md) para recursos, verificações remotas e pendências; não crie duplicatas. As credenciais S3 e a implantação pública ainda precisam ser concluídas.
+
 1. Crie banco Neon e um usuário dedicado. `DATABASE_URL` usa endpoint pooled, `DIRECT_URL` endpoint direto, ambos com `sslmode=verify-full`. Nunca exponha credenciais ao frontend. Ajuste pool/conexões ao plano e ao número de containers. Backups/PITR dependem das condições do plano; não suponha retenção infinita.
 2. Crie bucket R2 **privado**, sem URL pública/r2.dev. Gere token S3 restrito ao bucket com leitura, escrita, listagem de partes e exclusão. API precisa assinar upload e ler metadados; worker precisa ler original e escrever capas. Um futuro isolamento de chaves por serviço pode reduzir privilégios. `S3_ENDPOINT` e `S3_PUBLIC_ENDPOINT` normalmente apontam para `https://<account>.r2.cloudflarestorage.com`, `S3_REGION=auto`, `S3_BUCKET` identifica o bucket.
 3. Configure CORS no R2, substituindo a origem abaixo pela origem HTTPS exata da aplicação. A origem não é segredo. Não use `*` para origem:
