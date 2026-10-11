@@ -9,3 +9,11 @@ O bucket primário não é backup. Antes de produção, configure retenção e b
 5. O teste local documentado em VALIDATION valida dump/restore do schema/dados PostgreSQL; não prova backup do provedor R2/Neon. Automatização, criptografia e recuperação completa entre provedores são requisitos operacionais pendentes da Fase 4.
 
 O trabalho atual não configura jobs de backup de produção nem faz upload de backups para terceiros.
+
+Teste local reproduzível com os serviços de desenvolvimento e um `.env.test` já migrado:
+
+```sh
+RUN_BACKUP_TEST=1 pnpm exec tsx --env-file=.env.test infrastructure/scripts/verify-backup.ts
+```
+
+O script cria registros de teste, gera um MP4 pequeno, exporta com `pg_dump`, restaura em banco temporário separado e verifica IDs/mapeamentos. Copia e recupera o objeto original comparando SHA-256 e Range. Limpa os registros, objetos e arquivos temporários. O destino de mídia do teste é um prefixo temporário no mesmo MinIO, portanto isso não comprova redundância ou proteção do backup de produção.

@@ -32,3 +32,7 @@
 O worker exige FFmpeg/FFprobe e jobs persistentes; free tiers que hibernam não dão processamento contínuo. O MVP não salva vídeos em filesystem temporário nem em volumes da aplicação. A opção gateway exige banda da hospedagem; a opção direct aproveita entrega direta do R2. Capa pequena é transmitida pela API. HLS não está implementado.
 
 HTTPS por IP depende de certificado publicamente confiável e compatibilidade do cliente. O Compose não finge TLS por IP. Use um domínio/subdomínio ou configure método/certificado validado para seu IP; não ignore erros TLS. Não há publicação ou deploy automático pela CI.
+
+## Compute ocioso e limites gratuitos
+
+O processamento normal usa uma notificação Redis após o commit do upload, com outbox SQL durável. Em produção, a reconciliação/limpeza ocorre a cada hora; uma falha de publicação pode atrasar processamento até essa reconciliação. É configurável com `OUTBOX_RECONCILE_MS` (5.000–3.600.000 ms). Consultas de monitoramento frequentes a `/ready` e aba da biblioteca aberta podem manter o Neon ativo. Use `/health` para liveness e `/ready` sob demanda. Monitore compute, conexões e quotas do Neon: somente dados textuais não garante ficar no free tier.

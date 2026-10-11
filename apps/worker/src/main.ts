@@ -1,3 +1,4 @@
+import { PROCESSING_JOB_OPTIONS } from "@family/shared";
 import { PrismaClient } from "@family/database";
 import { storageFromEnv } from "@family/storage";
 import { Redis } from "ioredis";
@@ -49,7 +50,7 @@ async function maintenance() {
   if (stopping) return;
   // Outbox: nenhuma dependência de uma publicação Redis acontecer junto da transação SQL.
   for (const job of await db.processingJob.findMany({
-    where: { status: "PENDING" },
+    where: { status: { in: ["PENDING", "RUNNING"] } },
     take: 100,
   }))
     await queue.add(
@@ -57,10 +58,7 @@ async function maintenance() {
       { mediaId: job.mediaId, processingId: job.id },
       {
         jobId: job.id,
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 },
-        removeOnComplete: { age: 86400 },
-        removeOnFail: { age: 604800 },
+        ...PROCESSING_JOB_OPTIONS,
       },
     );
   for (const u of await db.uploadSession.findMany({
@@ -108,7 +106,17 @@ const tick = async () => {
   }
 };
 await tick();
-const timer = setInterval(() => void tick(), 5000);
+const reconcileMs = Number(
+  process.env.OUTBOX_RECONCILE_MS ||
+    (process.env.NODE_ENV === "production" ? 3600000 : 5000),
+);
+if (
+  !Number.isFinite(reconcileMs) ||
+  reconcileMs < 5000 ||
+  reconcileMs > 3600000
+)
+  throw new Error("OUTBOX_RECONCILE_MS deve estar entre 5000 e 3600000.");
+const timer = setInterval(() => void tick(), reconcileMs);
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, async () => {
     stopping = true;

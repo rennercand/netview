@@ -17,6 +17,7 @@ export function uploadRoutes(
   app: FastifyInstance,
   db: PrismaClient,
   storage: PrivateStorage,
+  enqueue: (processingId: string, mediaId: string) => Promise<void>,
 ) {
   async function owned(req: FastifyRequest, id: string) {
     z.string().uuid().parse(id);
@@ -221,7 +222,7 @@ export function uploadRoutes(
         400,
         "Tamanho final divergente",
       );
-      await db.$transaction(async (tx) => {
+      const processingJob = await db.$transaction(async (tx) => {
         const changed = await tx.uploadSession.updateMany({
           where: { id: u.id, status: "COMPLETING" },
           data: { status: "COMPLETED" },
@@ -239,7 +240,6 @@ export function uploadRoutes(
                 size: u.expectedSize,
               },
             },
-            jobs: { create: {} },
           },
         });
         await tx.household.update({
@@ -249,7 +249,14 @@ export function uploadRoutes(
             usedBytes: { increment: u.expectedSize },
           },
         });
+        return tx.processingJob.create({ data: { mediaId: u.mediaId } });
       });
+      await enqueue(processingJob.id, u.mediaId).catch(() =>
+        req.log.warn(
+          { jobId: processingJob.id },
+          "Fila indisponível; job preservado na outbox",
+        ),
+      );
     }
     await db.auditLog.create({
       data: {

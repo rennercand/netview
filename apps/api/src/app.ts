@@ -5,6 +5,8 @@ import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { ZodError } from "zod";
+import { Queue } from "bullmq";
+import { PROCESSING_JOB_OPTIONS } from "@family/shared";
 import { Redis } from "ioredis";
 import type { PrismaClient } from "@family/database";
 import type { PrivateStorage } from "@family/storage";
@@ -48,6 +50,10 @@ export async function buildApp(
         .filter(Boolean) || false,
     bodyLimit: 128 * 1024,
   });
+  const queue = new Queue("media", { connection: redis });
+  queue.on("error", (error) =>
+    app.log.error({ name: error.name }, "Erro na fila"),
+  );
   await app.register(cookie);
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(rateLimit, {
@@ -109,12 +115,19 @@ export async function buildApp(
         return { ok: true };
       });
       await accountRoutes(api, db, config);
-      uploadRoutes(api, db, storage);
+      uploadRoutes(api, db, storage, async (processingId, mediaId) => {
+        await queue.add(
+          "probe",
+          { processingId, mediaId },
+          { ...PROCESSING_JOB_OPTIONS, jobId: processingId },
+        );
+      });
       mediaRoutes(api, db, storage);
     },
     { prefix: "/api/v1" },
   );
   app.addHook("onClose", async () => {
+    await queue.close();
     await redis.quit();
   });
   return app;

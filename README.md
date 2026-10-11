@@ -11,7 +11,7 @@ Biblioteca audiovisual familiar privada. Fundação (Fase 0) e MVP essencial (Fa
 - `packages/storage`: adaptador S3 privado compatível com R2/MinIO. Banco guarda somente metadados e chaves opacas; originais e capas ficam no storage.
 - `packages/auth` e `packages/shared`: políticas, Argon2id, hashes de sessão e contratos compartilhados.
 
-Uploads multipart vão **direto do cliente para R2** em partes de 10 MiB. A API reserva quota atomicamente, assina tamanho e validade de cada parte, confirma ETags/tamanhos no storage e agenda processamento por outbox SQL. Os arquivos ficam prontos apenas após validação real do contêiner e dos codecs. MP4/H.264 8-bit (`yuv420p`) e áudio AAC são aceitos para reprodução; outros codecs ficam `INCOMPATIBLE`. Não há transcodificação/HLS no MVP.
+Uploads multipart vão **direto do cliente para R2** em partes de 10 MiB. A API reserva quota atomicamente, assina tamanho e validade de cada parte, confirma ETags/tamanhos no storage e agenda processamento por outbox SQL e notifica a fila logo após o commit. Os arquivos ficam prontos apenas após validação real do contêiner e dos codecs. MP4/H.264 8-bit (`yuv420p`) e áudio AAC são aceitos para reprodução; outros codecs ficam `INCOMPATIBLE`. Não há transcodificação/HLS no MVP.
 
 Por padrão, reprodução vai **direto ao R2**, com concessão somente para um objeto e validade de 120 segundos. O player renova o acesso preservando a posição. A API revalida sessão/grupo a cada concessão. Uma concessão anterior continua utilizável até expirar, inclusive após revogação; uma requisição já iniciada pode continuar. `PLAYBACK_DELIVERY=gateway` oferece alternativa com validação a cada requisição HTTP Range, sem gravar o vídeo localmente, mas consome a banda da hospedagem. Não registra URLs assinadas nem cookies em logs.
 
@@ -82,6 +82,8 @@ Veja [guia de produção](docs/DEPLOY.md) para requisitos Neon, CORS R2, Redis, 
 
 `DATABASE_URL` e `DIRECT_URL` devem usar `sslmode=verify-full` em produção, verificando o certificado TLS do Neon. O Neon guarda dados textuais, mas logs/catálogo/índices crescem; monitore o uso do plano. R2 Standard tem egress sem cobrança; armazenamento, operações e eventuais classes de acesso/recuperação têm custos próprios. Não trate a fatura como somente espaço em disco.
 
+O worker reconcilia a outbox a cada hora em produção (`OUTBOX_RECONCILE_MS`, 5 segundos no desenvolvimento). A fila é notificada imediatamente no fluxo normal; se essa notificação falhar, o SQL conserva o job para a reconciliação. A API verifica dependências reais ao iniciar; o healthcheck periódico usa `/health` sem consultar o Neon. `/ready` continua disponível para checagem completa sob demanda. Isso evita manter o banco acordado apenas por polling/healthchecks quando não há uso, mas não garante custo zero nem caber no plano gratuito.
+
 ## Migrations
 
 `pnpm db:generate` usa o gerador oficial do Prisma e WASM empacotado, sem banco/segredos nem download de engine nativo. O adapter runtime `pg` dispensa binários nativos.
@@ -110,6 +112,15 @@ Defina `DATABASE_URL` e `DIRECT_URL` apontando para `family_stream_test` (por ex
 pnpm exec tsx --env-file=.env.test infrastructure/scripts/migrate.ts
 pnpm exec tsx --env-file=.env.test infrastructure/scripts/run-integration.ts
 ```
+
+E2E (mesmo banco isolado, FFmpeg disponível):
+
+```sh
+pnpm exec playwright install --with-deps chromium
+pnpm exec tsx --env-file=.env.test infrastructure/scripts/run-e2e.ts
+```
+
+Se houver Chromium instalado, defina `CHROMIUM_PATH` para o executável e dispense o download. Os testes iniciam API, Vite e worker, exercitam desktop e viewport móvel e limpam sua própria mídia. Não gravam trace, screenshot nem vídeo que possa conter concessões de reprodução.
 
 Não rode integração contra seu banco Neon de produção. O worker é iniciado pelo teste e finalizado ao concluir. O teste cria um MP4 real, envia ao MinIO, verifica processamento, codecs, capa, Range, quota, CSRF, autorização e revogação. Veja [relatório de validação](docs/VALIDATION.md) para resultados realmente executados, E2E e limitações.
 

@@ -376,6 +376,11 @@ describe.sequential("MVP real: PostgreSQL, Redis, MinIO e FFmpeg", () => {
         partNumber: 1,
       })
     ).json();
+    const invalidSize = await fetch(url, {
+      method: "PUT",
+      body: new Uint8Array(fixture.length + 1),
+    });
+    expect(invalidSize.ok).toBe(false);
     const put = await fetch(url, {
       method: "PUT",
       body: new Uint8Array(fixture),
@@ -699,6 +704,70 @@ describe.sequential("MVP real: PostgreSQL, Redis, MinIO e FFmpeg", () => {
         })
       ).statusCode,
     ).toBe(401);
+  });
+  it("CLI envia arquivo diretamente ao storage com stream limitado", async () => {
+    const cliApp = await buildApp(
+      db,
+      storage,
+      {
+        NODE_ENV: "test",
+        APP_ORIGIN: origin,
+        DATABASE_URL: process.env.DATABASE_URL!,
+        REDIS_URL: process.env.REDIS_URL!,
+        PORT: 0,
+      },
+      { rateLimitNamespace: `integration:${namespace}:cli:` },
+    );
+    const apiAddress = await cliApp.listen({ host: "127.0.0.1", port: 0 });
+    try {
+      const account = await db.user.findUniqueOrThrow({ where: { id: host } });
+      const result = await promisify(execFile)(
+        "pnpm",
+        [
+          "exec",
+          "tsx",
+          "infrastructure/scripts/ingest.ts",
+          "--path",
+          join(dir, "fixture.mp4"),
+          "--group",
+          groupA,
+        ],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            INGEST_API_ORIGIN: apiAddress,
+            INGEST_EMAIL: account.email,
+            INGEST_PASSWORD: password,
+          },
+          timeout: 30000,
+        },
+      );
+      expect(result.stdout).toContain(
+        "Enviado diretamente para storage privado",
+      );
+      expect(result.stdout).not.toContain(password);
+      const media = await db.media.findFirstOrThrow({
+        where: { groupId: groupA, filename: "fixture.mp4" },
+      });
+      const job = await db.processingJob.findFirstOrThrow({
+        where: { mediaId: media.id },
+      });
+      jobIds.push(job.id);
+      for (let i = 0; i < 120; i++) {
+        if (
+          (await db.processingJob.findUniqueOrThrow({ where: { id: job.id } }))
+            .status === "DONE"
+        )
+          break;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      expect(
+        (await db.media.findUniqueOrThrow({ where: { id: media.id } })).status,
+      ).toBe("READY");
+    } finally {
+      await cliApp.close();
+    }
   });
   it("revogar associação remove acesso mesmo com sessão válida", async () => {
     expect(

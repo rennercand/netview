@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { PrismaClient, Prisma } from "@family/database";
-import { hashToken, canManage, canUpload } from "@family/auth";
+import { hashToken, canManage, canUpload, equalToken } from "@family/auth";
 import { ensure } from "./errors.js";
 type Identity = Prisma.SessionGetPayload<{
   include: { user: true; device: true };
@@ -62,7 +62,8 @@ export function installAuth(
     if (mutating) {
       const csrf = req.headers["x-csrf-token"];
       ensure(
-        typeof csrf === "string" && hashToken(csrf) === session.csrfHash,
+        typeof csrf === "string" &&
+          equalToken(hashToken(csrf), session.csrfHash),
         403,
         "CSRF inválido",
       );

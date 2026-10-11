@@ -72,3 +72,10 @@ export function sanitizeFilename(filename: string) {
     .replace(/[\x00-\x1f\x7f]/g, "")
     .slice(0, 240);
 }
+
+export const PROCESSING_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 5000 },
+  removeOnComplete: { age: 86400 },
+  removeOnFail: { age: 604800 },
+} as const;
