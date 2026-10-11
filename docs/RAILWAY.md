@@ -1,8 +1,12 @@
 # MVP no Railway Trial
 
-O frontend fica na Vercel. Railway executará API Fastify, worker FFmpeg e Redis privado; Neon guarda metadados e R2 guarda objetos. Nenhum serviço Railway foi criado até este registro: falta a credencial da conta.
+O frontend fica na Vercel. Railway executará API Fastify, worker FFmpeg e Redis privado; Neon guarda metadados e R2 guarda objetos. Nenhum serviço Family Stream foi criado até este registro. O token foi recebido e validado, mas aponta para um workspace Free que já contém outro projeto, `festa junina`, ligado a `rennao/festa-junina`, com serviço e volume próprios.
 
-Gere um token da conta em https://railway.com/account/tokens e salve como `RAILWAY_API_TOKEN` no ambiente Codex, depois salve/publique. O campo e as permissões de destino das APIs Railway já foram preparados. Não envie o token no chat. Não use a criação de contas sucessivas para renovar créditos; avalie o saldo/período do trial antes da implantação, sem ativar assinatura paga.
+Para usar a conta pretendida para o trial, gere nela um token em https://railway.com/account/tokens e salve como `RAILWAY_API_TOKEN` no ambiente Codex, depois salve/publique. O campo e as permissões de destino das APIs Railway já foram preparados. Não envie o token no chat. Não use a criação de contas sucessivas para renovar créditos; avalie o saldo/período do trial antes da implantação, sem ativar assinatura paga.
+
+## Acesso verificado e bloqueio atual
+
+A API Railway confirmou `plan=FREE`, `isTrialing=false`, `trialDaysRemaining=0`, aproximadamente US$ 1 de crédito restante e nenhum método de pagamento. O limite vigente é um projeto, três serviços e um volume; o outro projeto já ocupa o único projeto e volume. Não foi solicitado upgrade nem removido/alterado o projeto existente. A implantação depende de um token da conta com trial ou de uma decisão explícita do usuário sobre o projeto existente. Os valores de saldo/plano são uma observação deste acesso, não garantia de saldo futuro.
 
 ## Serviços
 
