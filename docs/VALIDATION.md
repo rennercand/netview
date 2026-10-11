@@ -49,3 +49,5 @@ Fixtures e contas foram removidas; consulta final confirmou zero usuários, grup
 ## MVP aberto posterior
 
 Após autorização explícita do usuário, as áreas de assistir e enviar foram separadas e o login retirado das rotas da interface. A nova integração verificou upload/assinatura/cancelamento e edição sem cookie, restrição ao grupo publicado, rejeição de Origin diferente e ausência de acesso anônimo a autenticação/administração. Os 22 testes de integração passaram; os 2 E2E desktop/móvel fizeram upload real sem login, edição, agrupamento, reprodução pública e redirecionamento de `/manage` para `/upload`, sem campo de senha. A API requer `MVP_OPEN_UPLOADS=true`; a flag ausente mantém autenticação para escrita.
+
+A versão aberta também passou no smoke HTTPS publicado sem cookies: consulta do único grupo, upload direto real, job READY, edição de título, catálogo/reprodução públicos com Range/206 e bloqueio das APIs de usuários. O MP4 de teste e seus registros foram removidos, a quota usada devolvida e o grupo técnico mantido vazio. `/`, `/upload` e `/manage` servem o novo bundle na Vercel, sem rota de login.
