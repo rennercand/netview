@@ -705,6 +705,39 @@ describe.sequential("MVP real: PostgreSQL, Redis, MinIO e FFmpeg", () => {
       ).statusCode,
     ).toBe(401);
   });
+  it("seed seguro cria ADMIN e grupo sem credenciais padrão", async () => {
+    const email = `${namespace}-seed@example.test`,
+      seedPassword = randomUUID() + randomUUID();
+    const result = await promisify(execFile)(
+      "pnpm",
+      ["exec", "tsx", "infrastructure/scripts/create-admin.ts"],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          ADMIN_EMAIL: email,
+          ADMIN_PASSWORD: seedPassword,
+          ADMIN_NAME: "Admin seed test",
+          HOUSEHOLD_NAME: "Seed test",
+        },
+      },
+    );
+    expect(result.stdout).toContain("Administrador e grupo criados");
+    expect(result.stdout).not.toContain(seedPassword);
+    const admin = await db.user.findUniqueOrThrow({ where: { email } });
+    users.push(admin.id);
+    expect(admin.isAdmin).toBe(true);
+    expect(admin.status).toBe("ACTIVE");
+    const group = await db.household.findFirstOrThrow({
+      where: { ownerId: admin.id },
+    });
+    groups.push(group.id);
+    expect(
+      await db.membership.findUniqueOrThrow({
+        where: { userId_groupId: { userId: admin.id, groupId: group.id } },
+      }),
+    ).toMatchObject({ role: "HOST", allowUpload: true });
+  });
   it("CLI envia arquivo diretamente ao storage com stream limitado", async () => {
     const cliApp = await buildApp(
       db,
