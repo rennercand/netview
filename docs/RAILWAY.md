@@ -1,33 +1,35 @@
-# MVP no Railway Trial
+# Family Stream no Railway Free
 
-O frontend fica na Vercel. Railway executará API Fastify, worker FFmpeg e Redis privado; Neon guarda metadados e R2 guarda objetos. Nenhum serviço Family Stream foi criado até este registro. O token foi recebido e validado, mas aponta para um workspace Free que já contém outro projeto, `festa junina`, ligado a `rennao/festa-junina`, com serviço e volume próprios.
+O usuário autorizou remover o projeto anterior `festa junina`, incluindo seu serviço e volume, para liberar o único projeto permitido. A remoção foi executada e o projeto `family-stream` criado. Nenhum upgrade pago foi solicitado. Esta conta está em Free, não em trial: o acesso inicial confirmou zero dias de trial e cerca de US$ 1 de crédito restante. O saldo muda com o uso.
 
-Para usar a conta pretendida para o trial, gere nela um token em https://railway.com/account/tokens e salve como `RAILWAY_API_TOKEN` no ambiente Codex, depois salve/publique. O campo e as permissões de destino das APIs Railway já foram preparados. Não envie o token no chat. Não use a criação de contas sucessivas para renovar créditos; avalie o saldo/período do trial antes da implantação, sem ativar assinatura paga.
+Projeto: https://railway.com/project/ee09d224-4315-4552-ad21-a2e252d42843
 
-## Acesso verificado e bloqueio atual
+## Configuração aplicada pela API Railway
 
-A API Railway confirmou `plan=FREE`, `isTrialing=false`, `trialDaysRemaining=0`, aproximadamente US$ 1 de crédito restante e nenhum método de pagamento. O limite vigente é um projeto, três serviços e um volume; o outro projeto já ocupa o único projeto e volume. Não foi solicitado upgrade nem removido/alterado o projeto existente. A implantação depende de um token da conta com trial ou de uma decisão explícita do usuário sobre o projeto existente. Os valores de saldo/plano são uma observação deste acesso, não garantia de saldo futuro.
+A API atual rejeita configurar novos serviços com `railway.json`/`railway.toml` (Config as Code descontinuado). Esses arquivos foram removidos; as configurações foram aplicadas diretamente por GraphQL. A alternativa futura é Infrastructure as Code em `.railway/railway.ts`, conforme https://docs.railway.com/infrastructure-as-code. Não reinstale as receitas antigas.
 
-## Serviços
+- API: repositório `rennercand/netview`, Dockerfile `infrastructure/Dockerfile.railway`, comando `pnpm --filter @family/api start`, pre-deploy `pnpm db:migrate`, healthcheck `/api/v1/health`, porta 3000, uma réplica, até 0,5 GB/1 vCPU.
+- Worker: mesmo Dockerfile, comando `pnpm --filter @family/worker start`, uma réplica, até 0,5 GB/1 vCPU, sem domínio público nem healthcheck HTTP. Concorrência de mídia 1 e reconciliação de uma hora.
+- Redis: `redis:7.4-alpine`, senha exclusiva, domínio privado, volume de 500 MB em `/data`, AOF habilitado, `noeviction`, cache máximo 96 MB, limite 0,15 GB/0,25 vCPU. Nenhum proxy TCP/domínio público.
 
-- API: branch `feat/family-stream-foundation`, raiz do monorepo, configuração `railway.json`.
-- Worker: mesma branch/raiz, config path `/infrastructure/railway.worker.json`. Não criar domínio público; nenhuma healthcheck HTTP para este processo.
-- Redis: serviço privado, senha, volume persistente, política `noeviction`; referenciar URL privada nos dois serviços. Não publicar porta/domínio TCP.
+O plano Free exige `sleepApplication=true` nos três serviços. Não garante execução contínua do worker nem baixa latência após suspensão; as conexões Redis e o tráfego dos serviços influenciam a suspensão. Crédito gratuito não garante que os três serviços durem um mês. Verifique saldo no dashboard e pare os serviços antes de esgotá-lo.
 
-O Dockerfile Railway usa apenas o estágio de serviços Node/FFmpeg, sem Caddy. A API aplica migrations via `DIRECT_URL` no pre-deploy; ambas as URLs Neon devem usar `sslmode=verify-full`. API verifica PostgreSQL/Redis/R2 antes de ouvir na porta Railway; liveness não consulta Neon continuamente. O worker tem concorrência 1 e reconciliação configurada para uma hora.
+A implementação está na branch `feat/family-stream-foundation`; `main` ainda não contém o MVP. Um deploy manual com `latestCommit=true` buscou `main` apesar da conexão inicial da branch. Por isso use o SHA exato da branch ao chamar `serviceInstanceDeploy`, ou verifique explicitamente o commit selecionado no dashboard. Não presuma que o deploy automático está funcional.
 
-Defina em API/worker `NODE_ENV=production`, `DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_REGION=auto`, `S3_BUCKET=family-stream`, e chaves S3 protegidas. API também precisa de `DIRECT_URL`, `APP_ORIGIN=https://family-stream-faguedes.vercel.app`, `PUBLIC_LIBRARY_GROUP_ID`, e `PLAYBACK_DELIVERY=direct`. O Railway fornece `PORT`. Não exponha essas credenciais em variáveis Vite.
+## Variáveis de produção
 
-Antes de criar deploy, verifique limites permitidos pelo trial: uma instância por serviço, CPU/RAM limitadas à necessidade, worker dimensionado para o FFmpeg e monitoramento do saldo. Créditos de teste não garantem executar os três serviços por um mês nem impedem gastos com outro provedor. Configure alertas/limites disponíveis; pare os serviços ao encerrar o teste. Não existe um limite financeiro inventado por esta configuração.
+API/worker receberam `NODE_ENV=production`, `DATABASE_URL` Neon pooled, `REDIS_URL` por referência ao Redis privado, `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_REGION`, `S3_BUCKET` e credenciais S3. API também recebeu `DIRECT_URL` Neon direto para migrations e `PORT=3000`. Ambas as URLs Neon usam `sslmode=verify-full`. `APP_ORIGIN=https://family-stream-faguedes.vercel.app`, `PLAYBACK_DELIVERY=direct`. Nenhuma credencial deve entrar no Git ou em variáveis Vite.
+
+A API testa PostgreSQL, Redis e R2 antes de ouvir. `/health` serve liveness; `/ready` faz verificação de dependências. Originais ficam no R2 e uploads são diretos; FFmpeg lê por HTTP Range, sem copiar originais ao disco do servidor.
 
 ## Biblioteca pública temporária
 
-Por escolha explícita do usuário, `/` passa a mostrar biblioteca pública somente leitura, sem formulário de login. Apenas vídeos `READY` do grupo indicado em `PUBLIC_LIBRARY_GROUP_ID` serão publicados. Conta proprietária deve estar ativa e o grupo possuir HOST ativo. Nenhum outro grupo é publicado automaticamente. Sem essa variável, o endpoint público responde indisponibilidade, não um catálogo simulado.
+Por escolha explícita do usuário, `/` mostra biblioteca pública somente leitura, sem formulário de login. Apenas vídeos READY do grupo indicado em `PUBLIC_LIBRARY_GROUP_ID` serão publicados. Conta proprietária e HOST devem estar ativos. Nenhum outro grupo é publicado automaticamente. Sem configuração, a API pública responde 503.
 
-As APIs públicas permitem catálogo/busca, capa e concessão de reprodução de 120 segundos, diretamente ao R2. Elas não retornam e-mails, hashes, dados de sessão, erros internos, chaves de storage ou histórico pessoal. O bucket permanece privado, mas qualquer visitante pode obter uma concessão para os vídeos publicados; não coloque vídeos confidenciais nesse grupo. Isso altera conscientemente a regra original de biblioteca exclusivamente privada.
+O grupo configurado inicialmente é `d7bda340-bec1-47a7-ae2c-e1e683e84b46`. A consulta ao Neon confirmou zero usuários, grupos e mídias antes do deploy: esse UUID reserva o grupo de publicação, mas não cria usuário, catálogo ou vídeos simulados. Para administrar uploads, crie primeiro o administrador com `pnpm admin:create` e variáveis temporárias `ADMIN_EMAIL`/`ADMIN_PASSWORD`, depois substitua `PUBLIC_LIBRARY_GROUP_ID` pelo UUID do grupo real criado. Não há credenciais padrão nem administrador compartilhado.
 
-Uploads, quota, edição, gerenciamento e progresso pessoal continuam autenticados. O formulário existente fica em `/manage`, fora da página inicial. Não existem endpoints anônimos de escrita nem usuário ADMIN compartilhado. Retirar a configuração pública restaura bloqueio da publicação; concessões já emitidas ainda valem até expirar.
+As APIs públicas permitem catálogo/busca, capa e concessão de reprodução de 120 segundos diretamente ao R2. O bucket permanece privado, mas qualquer visitante pode reproduzir o grupo publicado. Não publique conteúdo confidencial nesse grupo. Uploads, edição e gerenciamento continuam autenticados em `/manage`.
 
-## Conectar à Vercel
+## Validação e Vercel
 
-Quando a API Railway responder saudável pelo domínio HTTPS, atualizar o rewrite `/api` da Vercel para esse domínio e redeployar o frontend. A Vercel atualmente informa indisponibilidade porque não existe backend conectado. Manter o CORS R2 com a origem Vercel exata. Validar catálogo público e reprodução real sem login, e garantir que `/manage`/uploads continuam protegidos. Testar CPU/RAM do worker antes de enviar uma biblioteca grande.
+O domínio criado para a API é https://api-production-af9e.up.railway.app. API, worker e Redis atingiram status SUCCESS. `/health` e `/ready` retornaram 200 por HTTPS. O rewrite `/api` da Vercel foi conectado ao domínio real, com catálogo público 200/vazio e APIs privadas protegidas. CORS R2 mantém a origem Vercel exata. Login, upload multipart real ao R2, job FFmpeg, agrupamento, thumbnail, playback Range/SHA-256 e limpeza foram verificados com conta e MP4 temporários privados; consulte [VALIDATION.md](VALIDATION.md). Não foi testado navegador remoto nem biblioteca grande.

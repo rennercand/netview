@@ -21,8 +21,8 @@ O runner normal `packages/database/src/migrate.ts` e o runtime Prisma continuam 
 - Acesso público `r2.dev`: desativado e confirmado pela API.
 - Domínios personalizados: nenhum.
 - Lifecycle: multipart incompleto abortado após 86.400 segundos.
-- CORS: somente `http://localhost:5173` para desenvolvimento; GET/HEAD/PUT; headers Content-Type/Range; ETag/Content-Range/Accept-Ranges/Content-Length expostos. Substituir pela origem HTTPS exata quando a hospedagem for escolhida.
-- Bucket vazio após as verificações: uma fixture textual de 28 bytes foi enviada e removida; um multipart de 28 bytes foi enviado e abortado. Nenhum vídeo foi enviado.
+- CORS vigente: `http://localhost:5173`, `http://localhost:8080` e `https://family-stream-faguedes.vercel.app`; GET/HEAD/PUT; headers Content-Type/Range; ETag/Content-Range/Accept-Ranges/Content-Length expostos. Não há wildcard de origem.
+- Bucket vazio após as verificações: uma fixture textual de 28 bytes foi enviada e removida; um multipart de 28 bytes foi enviado e abortado. Na verificação inicial nenhum vídeo foi enviado; posteriormente um MP4 temporário foi enviado/processado/removido no smoke publicado.
 - `.env.r2` contém apenas endpoints/região/bucket, com permissão 0600 e ignorado pelo Git.
 
 O token Cloudflare funciona para gerenciamento do bucket. Credenciais derivadas desse token foram descartadas após falha de assinatura. O usuário gerou as credenciais S3 próprias e as publicou como variáveis protegidas com entrega direta ao processo. Essas credenciais passaram nos testes remotos descritos abaixo.
@@ -41,4 +41,4 @@ O teste multipart confirmou criação (200), upload de uma parte de 28 bytes com
 
 Nenhum plano pago, upgrade ou serviço de hospedagem foi contratado por esta configuração. Neon Free foi confirmado pela API. R2 possui franquia gratuita e cobra excedentes; não há garantia de custo zero ilimitado. Não foi possível consultar assinaturas/faturamento Cloudflare com o token de gerenciamento. O bucket vazio evita acrescentar armazenamento de vídeos nesta etapa; acompanhe uso total da conta antes de começar uploads. A quota padrão de grupos da aplicação não representa um teto financeiro do R2.
 
-Pendências: teste remoto completo da aplicação, primeiro administrador com credenciais escolhidas pelo usuário, escolha da hospedagem, Redis privado, domínio/HTTPS, CORS de produção e backup independente. URLs/chaves ficam fora do código. Consulte [DEPLOY.md](DEPLOY.md) e [VALIDATION.md](VALIDATION.md).
+API, worker e Redis privado foram publicados no Railway Free e conectados ao frontend Vercel por HTTPS. O runtime e as migrations usam PostgreSQL TCP Neon normalmente nessa hospedagem. O smoke publicado confirmou login/upload direto/processamento/playback/capa e limpeza de dados temporários. Pendências: primeiro administrador definitivo, vídeos do usuário, testes de navegador remoto e backup independente. URLs/chaves ficam fora do código. Consulte [DEPLOY.md](DEPLOY.md) e [VALIDATION.md](VALIDATION.md).

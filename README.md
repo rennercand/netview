@@ -138,4 +138,4 @@ Fase 2: pareamento com código de uso único e credencial DEVICE restrita, `/tv`
 
 Por solicitação do usuário, a página inicial abre a biblioteca pública somente leitura do grupo configurado em `PUBLIC_LIBRARY_GROUP_ID`. Apenas vídeos prontos desse grupo são publicados. Uploads e administração continuam autenticados em `/manage`. Sem configurar o grupo, a API pública retorna indisponibilidade.
 
-Frontend publicado: https://family-stream-faguedes.vercel.app. O backend ainda depende da conexão Railway; a interface informa indisponibilidade até lá. Veja [Railway Trial](docs/RAILWAY.md) para containers API/worker, Redis e credencial necessária, sem assinatura paga.
+Frontend publicado: https://family-stream-faguedes.vercel.app. O backend está publicado no Railway e conectado à Vercel; o catálogo começa vazio. A criação do primeiro administrador e o envio de vídeos ainda precisam ser realizados. Veja [Railway Free](docs/RAILWAY.md) para containers API/worker, Redis e credencial necessária, sem assinatura paga.
