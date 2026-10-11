@@ -151,6 +151,7 @@ beforeAll(async () => {
       DATABASE_URL: process.env.DATABASE_URL!,
       REDIS_URL: process.env.REDIS_URL!,
       PORT: 3000,
+      PUBLIC_LIBRARY_GROUP_ID: groupA,
     },
     { rateLimitNamespace: `integration:${namespace}:` },
   );
@@ -430,6 +431,101 @@ describe.sequential("MVP real: PostgreSQL, Redis, MinIO e FFmpeg", () => {
       (await db.processingJob.findUniqueOrThrow({ where: { id: job.id } }))
         .status,
     ).toBe("DONE");
+  });
+  it("biblioteca pública publica somente READY do grupo escolhido, sem escrita", async () => {
+    const other = await db.media.create({
+      data: {
+        groupId: groupB,
+        uploaderId: outsider,
+        title: "Privado",
+        filename: "private.mp4",
+        size: 1n,
+        status: "READY",
+      },
+    });
+    const unfinished = await db.media.create({
+      data: {
+        groupId: groupA,
+        uploaderId: host,
+        title: "Incompleto",
+        filename: "pending.mp4",
+        size: 1n,
+        status: "PROCESSING",
+      },
+    });
+    const result = await app.inject(`/api/v1/public/media?groupId=${groupB}`);
+    expect(result.statusCode).toBe(200);
+    expect(result.json().items.map((m: { id: string }) => m.id)).toEqual([
+      mediaId,
+    ]);
+    expect(result.body).not.toContain("storageKey");
+    expect(result.body).not.toContain("uploaderId");
+    for (const id of [other.id, unfinished.id]) {
+      expect(
+        (await app.inject(`/api/v1/public/media/${id}/playback`)).statusCode,
+      ).toBe(404);
+      expect(
+        (await app.inject(`/api/v1/public/media/${id}/thumbnail`)).statusCode,
+      ).toBe(404);
+    }
+    expect(
+      (await app.inject(`/api/v1/public/media/${mediaId}/thumbnail`))
+        .statusCode,
+    ).toBe(200);
+    const playback = await app.inject(
+      `/api/v1/public/media/${mediaId}/playback`,
+    );
+    expect(playback.statusCode).toBe(200);
+    expect(
+      new URL(playback.json().source).searchParams.get("X-Amz-Expires"),
+    ).toBe("120");
+    expect(
+      Buffer.from(await (await fetch(playback.json().source)).arrayBuffer()),
+    ).toEqual(fixture);
+    for (const url of [
+      "/uploads/init",
+      `/media/${mediaId}`,
+      `/media/${mediaId}/progress`,
+    ]) {
+      expect(
+        (
+          await app.inject({
+            method: url.includes("progress")
+              ? "PUT"
+              : url.includes("uploads")
+                ? "POST"
+                : "PATCH",
+            url: `/api/v1${url}`,
+            headers: { origin },
+            payload: {},
+          })
+        ).statusCode,
+      ).toBe(401);
+    }
+    await db.media.deleteMany({
+      where: { id: { in: [other.id, unfinished.id] } },
+    });
+  });
+  it("biblioteca pública fica desativada sem grupo configurado", async () => {
+    const disabled = await buildApp(
+      db,
+      storage,
+      {
+        NODE_ENV: "test",
+        APP_ORIGIN: origin,
+        DATABASE_URL: process.env.DATABASE_URL!,
+        REDIS_URL: process.env.REDIS_URL!,
+        PORT: 3000,
+      },
+      { rateLimitNamespace: `public-disabled:${namespace}:` },
+    );
+    try {
+      expect((await disabled.inject("/api/v1/public/media")).statusCode).toBe(
+        503,
+      );
+    } finally {
+      await disabled.close();
+    }
   });
   it("bucket é privado e CORS de upload expõe ETag", async () => {
     const u = await db.uploadSession.findUniqueOrThrow({

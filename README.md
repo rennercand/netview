@@ -1,6 +1,6 @@
 # Family Stream
 
-Biblioteca audiovisual familiar privada. Fundação (Fase 0) e MVP essencial (Fase 1), com frontend básico: login, biblioteca, busca, agrupamento por série/temporada, player, envio de arquivos, aprovação e gerenciamento de membros/sessões.
+Biblioteca audiovisual familiar com armazenamento privado. Fundação (Fase 0) e MVP essencial (Fase 1), com frontend básico: login, biblioteca, busca, agrupamento por série/temporada, player, envio de arquivos, aprovação e gerenciamento de membros/sessões.
 
 ## Arquitetura e decisões
 
@@ -133,3 +133,9 @@ Não rode integração contra seu banco Neon de produção. O worker é iniciado
 Fase 2: pareamento com código de uso único e credencial DEVICE restrita, `/tv`, controles direcionais e validação em aparelhos reais. Fase 3: transcodificação, HLS com autorização de todos os segmentos, legendas, melhor recuperação de finalização e gerenciamento granular de compartilhamento. Fase 4: deploy escolhido, backup/restore automatizado, observabilidade, MFA e revisão operacional. Entidades futuras no schema não significam APIs dessas funcionalidades já implementadas.
 
 [Especificação integral](docs/ESPECIFICACAO_FAMILY_STREAM_CODEX.md) · [Segurança](SECURITY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Backup e restauração](docs/BACKUP.md)
+
+## MVP público e Railway
+
+Por solicitação do usuário, a página inicial abre a biblioteca pública somente leitura do grupo configurado em `PUBLIC_LIBRARY_GROUP_ID`. Apenas vídeos prontos desse grupo são publicados. Uploads e administração continuam autenticados em `/manage`. Sem configurar o grupo, a API pública retorna indisponibilidade.
+
+Frontend publicado: https://family-stream-faguedes.vercel.app. O backend ainda depende da conexão Railway; a interface informa indisponibilidade até lá. Veja [Railway Trial](docs/RAILWAY.md) para containers API/worker, Redis e credencial necessária, sem assinatura paga.

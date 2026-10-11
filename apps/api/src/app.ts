@@ -15,6 +15,7 @@ import { installAuth } from "./auth.js";
 import { accountRoutes } from "./accounts.js";
 import { uploadRoutes } from "./uploads.js";
 import { mediaRoutes } from "./media.js";
+import { publicRoutes } from "./public.js";
 export async function buildApp(
   db: PrismaClient,
   storage: PrivateStorage,
@@ -123,6 +124,7 @@ export async function buildApp(
         );
       });
       mediaRoutes(api, db, storage);
+      publicRoutes(api, db, storage, config);
     },
     { prefix: "/api/v1" },
   );

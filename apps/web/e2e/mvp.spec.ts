@@ -34,6 +34,7 @@ test.beforeAll(async () => {
   groupId = (
     await db.household.create({
       data: {
+        id: process.env.PUBLIC_LIBRARY_GROUP_ID,
         name: "Família E2E",
         ownerId: admin.id,
         memberships: { create: { userId: admin.id, role: "HOST" } },
@@ -103,7 +104,7 @@ test.afterAll(async () => {
 test("login, upload direto, série, reprodução com seek e logout", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/manage");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
@@ -146,6 +147,30 @@ test("login, upload direto, série, reprodução com seek e logout", async ({
   );
   expect(horizontal).toBe(false);
   await page.getByRole("button", { name: "Fechar player" }).click();
+  await page.goto("/");
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Biblioteca", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Família · Temporada 1" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enviar arquivo", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Reproduzir", exact: true }).click();
+  await expect(page.locator("video")).toBeVisible();
+  await page
+    .locator("video")
+    .evaluate((video: HTMLVideoElement) => video.play());
+  await expect
+    .poll(() =>
+      page
+        .locator("video")
+        .evaluate((video: HTMLVideoElement) => video.currentTime),
+    )
+    .toBeGreaterThan(0.1);
+  await page.goto("/manage");
   await page.getByRole("button", { name: "Sair", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Entrar", exact: true }),

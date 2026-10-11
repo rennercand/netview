@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 if (
   !process.env.DATABASE_URL ||
@@ -12,6 +13,7 @@ const result = spawnSync("pnpm", ["exec", "playwright", "test"], {
     NODE_ENV: "test",
     APP_ORIGIN: "http://localhost:5173",
     PORT: "3000",
+    PUBLIC_LIBRARY_GROUP_ID: randomUUID(),
   },
 });
 process.exit(result.status ?? 1);

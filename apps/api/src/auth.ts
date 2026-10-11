@@ -38,6 +38,11 @@ export function installAuth(
     )
       return;
     if (!path.startsWith("/api/v1")) return;
+    if (
+      ["GET", "HEAD"].includes(req.method) &&
+      path.startsWith("/api/v1/public/")
+    )
+      return;
     const raw = req.cookies.fs_session;
     ensure(raw, 401, "Login necessário");
     const session = await db.session.findUnique({

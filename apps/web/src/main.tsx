@@ -248,13 +248,23 @@ function Uploader({ groups, onDone }: { groups: Group[]; onDone: () => void }) {
     </section>
   );
 }
-function Player({ media, onClose }: { media: Media; onClose: () => void }) {
+function Player({
+  media,
+  onClose,
+  publicView = false,
+}: {
+  media: Media;
+  onClose: () => void;
+  publicView?: boolean;
+}) {
   const source = useQuery({
-    queryKey: ["playback", media.id],
+    queryKey: ["playback", publicView, media.id],
     queryFn: () =>
       api<{ source: string; expiresAt: string }>(
-        `/media/${media.id}/playback-session`,
-        {},
+        publicView
+          ? `/public/media/${media.id}/playback`
+          : `/media/${media.id}/playback-session`,
+        publicView ? undefined : {},
       ),
   });
   const [message, setMessage] = useState("");
@@ -299,7 +309,7 @@ function Player({ media, onClose }: { media: Media; onClose: () => void }) {
           }
           onTimeUpdate={(e) => {
             position.current = e.currentTarget.currentTime;
-            if (Date.now() - lastSave.current > 10000) {
+            if (!publicView && Date.now() - lastSave.current > 10000) {
               lastSave.current = Date.now();
               void api(
                 `/media/${media.id}/progress`,
@@ -310,11 +320,12 @@ function Player({ media, onClose }: { media: Media; onClose: () => void }) {
           }}
           onPause={(e) => {
             if (e.currentTarget.readyState > 0) wasPlaying.current = false;
-            void api(
-              `/media/${media.id}/progress`,
-              { position: e.currentTarget.currentTime },
-              "PUT",
-            ).catch(() => {});
+            if (!publicView)
+              void api(
+                `/media/${media.id}/progress`,
+                { position: e.currentTarget.currentTime },
+                "PUT",
+              ).catch(() => {});
           }}
         />
       )}
@@ -673,7 +684,116 @@ function Library({ me }: { me: Me }) {
     </>
   );
 }
-function App() {
+function PublicLibrary() {
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Media | null>(null);
+  const catalog = useQuery({
+    queryKey: ["public-media", q, page],
+    queryFn: () =>
+      api<{
+        items: Pick<
+          Media,
+          | "id"
+          | "title"
+          | "series"
+          | "season"
+          | "episode"
+          | "duration"
+          | "status"
+        >[];
+        total: number;
+      }>(`/public/media?q=${encodeURIComponent(q)}&page=${page}`),
+    staleTime: 60000,
+  });
+  const sections: Record<string, NonNullable<typeof catalog.data>["items"]> =
+    {};
+  for (const item of catalog.data?.items || []) {
+    const section = item.series
+      ? `${item.series} · Temporada ${item.season}`
+      : "Vídeos avulsos";
+    (sections[section] ??= []).push(item);
+  }
+  return (
+    <>
+      <header>
+        <h1>Family Stream</h1>
+        <Link to="/manage">Gerenciar</Link>
+      </header>
+      <main>
+        {selected && (
+          <Player
+            media={selected}
+            publicView
+            onClose={() => setSelected(null)}
+          />
+        )}
+        <h2>Biblioteca</h2>
+        <label>
+          Busca
+          <input
+            value={q}
+            placeholder="Título ou série"
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <ErrorMessage message={catalog.error?.message || ""} />
+        {catalog.isPending && <p>Carregando biblioteca…</p>}
+        {catalog.data?.total === 0 && <p>Nenhum vídeo publicado.</p>}
+        {Object.entries(sections).map(([title, items]) => (
+          <section key={title}>
+            <h3>{title}</h3>
+            <div className="grid">
+              {items.map((m) => (
+                <article key={m.id}>
+                  <img
+                    alt=""
+                    loading="lazy"
+                    src={`/api/v1/public/media/${m.id}/thumbnail`}
+                  />
+                  <h4>
+                    {m.episode !== null ? `E${m.episode} · ` : ""}
+                    {m.title}
+                  </h4>
+                  <button
+                    onClick={() =>
+                      setSelected({
+                        ...m,
+                        groupId: "",
+                        filename: "",
+                        progress: [],
+                        processingError: null,
+                      })
+                    }
+                  >
+                    Reproduzir
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
+        <div className="row">
+          <button disabled={page === 1} onClick={() => setPage(page - 1)}>
+            Anterior
+          </button>
+          <span>Página {page}</span>
+          <button
+            disabled={!catalog.data || page * 100 >= catalog.data.total}
+            onClick={() => setPage(page + 1)}
+          >
+            Próxima
+          </button>
+        </div>
+      </main>
+    </>
+  );
+}
+
+function PrivateApp() {
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me") });
   if (me.isPending) return <p>Carregando…</p>;
@@ -690,7 +810,8 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={client}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<App />} />
+          <Route path="/" element={<PublicLibrary />} />
+          <Route path="/manage" element={<PrivateApp />} />
           <Route
             path="*"
             element={

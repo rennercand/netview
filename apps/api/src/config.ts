@@ -7,6 +7,7 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().url(),
   PORT: z.coerce.number().default(3000),
+  PUBLIC_LIBRARY_GROUP_ID: z.string().uuid().optional(),
 });
 export function loadConfig() {
   const c = envSchema.parse(process.env);
