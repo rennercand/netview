@@ -78,6 +78,8 @@ A CLI percorre a pasta, envia apenas `.mp4` diretamente para o storage com strea
 
 ## Neon, R2 e hospedagem
 
+Para começar no seu próprio computador instalando somente Docker, veja [o guia local com Neon e R2](docs/LOCAL.md). Ele usa `infrastructure/compose.local.yml`, com acesso apenas neste computador, sem PostgreSQL/MinIO locais.
+
 Veja [guia de produção](docs/DEPLOY.md) para requisitos Neon, CORS R2, Redis, HTTPS e containers. A hospedagem pode ser VPS, Railway ou Render, desde que suporte worker persistente, FFmpeg e Redis. Não pressuponha que todos os serviços cabem em plano gratuito nem que serviços suspensos processam jobs. Não faça deploy antes de configurar os segredos e validar custos/limites.
 
 `DATABASE_URL` e `DIRECT_URL` devem usar `sslmode=verify-full` em produção, verificando o certificado TLS do Neon. O Neon guarda dados textuais, mas logs/catálogo/índices crescem; monitore o uso do plano. R2 Standard tem egress sem cobrança; armazenamento, operações e eventuais classes de acesso/recuperação têm custos próprios. Não trate a fatura como somente espaço em disco.
