@@ -1,5 +1,9 @@
 # Frontend Family Stream na Vercel
 
+**Publicado:** https://family-stream-faguedes.vercel.app, projeto `family-stream` na equipe Hobby do usuário, sem upgrade pago. O deploy atual usou o build Vite compilado, enviado pela API Vercel; o projeto não está ligado ao GitHub para deploy automático. Commits novos precisam de novo deploy ou de configurar a integração Git descrita abaixo. O login Vercel que protegia esse novo projeto foi desativado apenas nele para permitir acesso público à interface; a autenticação real da aplicação continua dependente da API.
+
+Os assets, CSP e fallback React Router foram conferidos via HTTPS. Enquanto o notebook não está conectado, `/api` responde HTTP 503 com JSON explicando indisponibilidade; não há autenticação ou catálogo simulados. A origem desse frontend já foi adicionada ao CORS privado do R2. Para conectar o Windows, siga [NOTEBOOK.md](NOTEBOOK.md) e informe a URL HTTPS do túnel para substituir a rota temporária de indisponibilidade pelo proxy da API real.
+
 A Vercel serve a interface React/Vite. O backend Fastify, worker FFmpeg e Redis desta arquitetura precisam ficar no computador Windows ou em outra hospedagem. Neon e R2 continuam separados. Publicar somente a interface não torna login/upload/reprodução funcionais sem uma API acessível por HTTPS.
 
 ## Importar o projeto
@@ -35,4 +39,4 @@ Se o backend ficar no Windows, será necessário configurar acesso HTTPS públic
 
 ## Antes de compartilhar
 
-Confira backend pronto, login, logout, pedido de acesso, upload direto R2, worker, reprodução/seek e isolamento entre grupos usando o domínio de produção. Mudanças de domínio exigem atualizar `APP_ORIGIN` e CORS; previews de branches têm origens diferentes e não são automaticamente autorizados. Nenhum deploy Vercel foi executado ou verificado por este guia.
+Confira backend pronto, login, logout, pedido de acesso, upload direto R2, worker, reprodução/seek e isolamento entre grupos usando o domínio de produção. Mudanças de domínio exigem atualizar `APP_ORIGIN` e CORS; previews de branches têm origens diferentes e não são automaticamente autorizados. O frontend foi publicado e conferido; o fluxo completo ainda não foi testado porque o backend do notebook não está conectado.

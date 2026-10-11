@@ -31,3 +31,7 @@ Não há HLS, transcodificação, legendas, pareamento TV, MFA, recuperação de
 ## Configuração remota posterior
 
 Neon Free recebeu a migration inicial e validação de checksum/rollback. R2 real foi verificado com credenciais S3 próprias: upload/download de fixture, SHA-256, Range, CORS, multipart e limpeza. Veja [PROVISIONING.md](PROVISIONING.md). Os testes unitários/integração/E2E relatados acima continuam sendo os testes locais; não foram repetidos contra o banco Neon main nem contra o bucket de produção.
+
+O frontend Vite foi publicado na Vercel Hobby em https://family-stream-faguedes.vercel.app. Foram verificados HTTPS/200, HTML, assets JS/CSS, CSP, fallback `/tv` e HTTP 503 explícito nas rotas da API ainda desconectada. A tentativa de teste Chromium remoto foi bloqueada pelo certificado do proxy deste ambiente (`ERR_CERT_AUTHORITY_INVALID`); não foi desativada validação TLS. Isso não substitui um E2E do fluxo completo publicado.
+
+O Compose notebook foi verificado por sintaxe, merge, perfil que exclui a web local, origem HTTPS, modo de produção e ausência de portas publicadas de API/Redis/túnel. A tag cloudflared foi confirmada no registry e fixada por digest. Execução no Windows e integração Vercel → túnel → API/worker → Neon/R2 continuam pendentes do notebook do usuário.

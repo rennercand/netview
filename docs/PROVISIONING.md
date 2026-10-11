@@ -1,6 +1,6 @@
 # Recursos Neon e Cloudflare R2
 
-Recursos reais provisionados para Family Stream. A aplicação pública ainda não foi hospedada.
+Recursos reais provisionados para Family Stream. O frontend foi publicado em https://family-stream-faguedes.vercel.app; o backend ainda depende do notebook. Veja [NOTEBOOK.md](NOTEBOOK.md) para iniciar e conectar o Windows.
 
 ## Neon
 
