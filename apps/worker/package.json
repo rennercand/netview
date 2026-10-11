@@ -1,0 +1,18 @@
+{
+  "name": "@family/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@family/database": "workspace:*",
+    "@family/storage": "workspace:*",
+    "@family/shared": "workspace:*",
+    "bullmq": "^5.63.0",
+    "ioredis": "^5.8.2",
+    "tsx": "^4.20.6",
+    "pino": "^9.14.0"
+  }
+}

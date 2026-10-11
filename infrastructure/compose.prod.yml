@@ -1,0 +1,82 @@
+name: family-stream
+x-service: &service
+  build:
+    { context: .., dockerfile: infrastructure/Dockerfile, target: services }
+  env_file: ../.env
+  environment:
+    NODE_ENV: production
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+services:
+  # PostgreSQL is hosted by Neon. DATABASE_URL (pooled) and DIRECT_URL (direct) are required.
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set a strong Redis password}
+    command:
+      [
+        "sh",
+        "-c",
+        'exec redis-server --appendonly yes --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"',
+      ]
+    volumes: ["redis:/data"]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  migrate:
+    <<: *service
+    restart: "no"
+    command: ["pnpm", "db:migrate"]
+  api:
+    <<: *service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *service
+    command: ["pnpm", "--filter", "@family/worker", "start"]
+    depends_on: { api: { condition: service_healthy } }
+    # FFmpeg reads the private object remotely; originals never touch local disk.
+    mem_limit: 2g
+    cpus: 2
+  web:
+    build: { context: .., dockerfile: infrastructure/Dockerfile, target: web }
+    restart: unless-stopped
+    depends_on: { api: { condition: service_healthy } }
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set public hostname or address with a valid certificate}
+      ACME_EMAIL: ${ACME_EMAIL:?Set certificate contact email}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      [
+        "./Caddyfile:/etc/caddy/Caddyfile:ro",
+        "caddy-data:/data",
+        "caddy-config:/config",
+      ]
+    restart: unless-stopped
+    depends_on: [web, api]
+volumes:
+  redis:
+  caddy-data:
+  caddy-config:

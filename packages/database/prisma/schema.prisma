@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+enum Role {
+  HOST
+  MEMBER
+}
+enum MediaStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  INCOMPATIBLE
+  FAILED
+  DELETED
+}
+enum AssetType {
+  ORIGINAL
+  MP4
+  HLS
+  THUMBNAIL
+  SUBTITLE
+}
+enum UploadStatus {
+  OPEN
+  COMPLETING
+  COMPLETED
+  ABORTED
+  FAILED
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique
+  passwordHash String
+  name String
+  status UserStatus @default(PENDING)
+  isAdmin Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships Membership[]
+  sessions Session[]
+  media Media[]
+  requests AccessRequest[]
+  progress WatchProgress[]
+  ownedGroups Household[]
+  uploads UploadSession[]
+  audit AuditLog[]
+}
+model Household {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  ownerId String @db.Uuid
+  owner User @relation(fields:[ownerId],references:[id])
+  quotaBytes BigInt @default(53687091200)
+  usedBytes BigInt @default(0)
+  reservedBytes BigInt @default(0)
+  createdAt DateTime @default(now())
+  memberships Membership[]
+  requests AccessRequest[]
+  devices Device[]
+  media Media[]
+  playlists Playlist[]
+}
+model Membership {
+  userId String @db.Uuid
+  groupId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  group Household @relation(fields:[groupId],references:[id],onDelete:Cascade)
+  role Role @default(MEMBER)
+  allowUpload Boolean @default(false)
+  active Boolean @default(true)
+  @@id([userId,groupId])
+  @@index([groupId])
+}
+model AccessRequest {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  groupId String? @db.Uuid
+  group Household? @relation(fields:[groupId],references:[id])
+  status UserStatus @default(PENDING)
+  approvedBy String? @db.Uuid
+  createdAt DateTime @default(now())
+  @@index([status,groupId])
+}
+model Invitation {
+  id String @id @default(uuid()) @db.Uuid
+  groupId String @db.Uuid
+  email String
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt DateTime?
+  createdBy String @db.Uuid
+}
+model Device {
+  id String @id @default(uuid()) @db.Uuid
+  groupId String @db.Uuid
+  group Household @relation(fields:[groupId],references:[id],onDelete:Cascade)
+  name String
+  type String @default("OTHER")
+  revokedAt DateTime?
+  lastSeenAt DateTime?
+  sessions Session[]
+  pairings DevicePairing[]
+  progress WatchProgress[]
+  @@index([groupId])
+}
+model DevicePairing {
+  id String @id @default(uuid()) @db.Uuid
+  codeHash String @unique
+  deviceId String @db.Uuid
+  device Device @relation(fields:[deviceId],references:[id],onDelete:Cascade)
+  expiresAt DateTime
+  approvedAt DateTime?
+  approvedBy String? @db.Uuid
+  attempts Int @default(0)
+}
+model Session {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique
+  csrfHash String
+  userId String? @db.Uuid
+  user User? @relation(fields:[userId],references:[id],onDelete:Cascade)
+  deviceId String? @db.Uuid
+  device Device? @relation(fields:[deviceId],references:[id],onDelete:Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  @@index([userId,revokedAt])
+}
+model IpAccessRule {
+  id String @id @default(uuid()) @db.Uuid
+  scopeType String
+  scopeId String @db.Uuid
+  cidr String
+  action String
+  reason String?
+  authorId String @db.Uuid
+  expiresAt DateTime?
+  @@index([scopeType,scopeId])
+}
+model Media {
+  id String @id @default(uuid()) @db.Uuid
+  groupId String @db.Uuid
+  group Household @relation(fields:[groupId],references:[id])
+  uploaderId String @db.Uuid
+  uploader User @relation(fields:[uploaderId],references:[id])
+  title String
+  filename String
+  description String @default("")
+  series String?
+  season Int?
+  episode Int?
+  status MediaStatus @default(UPLOADING)
+  size BigInt
+  duration Float?
+  width Int?
+  height Int?
+  videoCodec String?
+  audioCodec String?
+  processingError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assets MediaAsset[]
+  uploads UploadSession[]
+  jobs ProcessingJob[]
+  progress WatchProgress[]
+  playlistItems PlaylistItem[]
+  permissions MediaPermission[]
+  @@index([groupId,status,createdAt])
+  @@index([groupId,series,season,episode])
+}
+model MediaAsset {
+  id String @id @default(uuid()) @db.Uuid
+  mediaId String @db.Uuid
+  media Media @relation(fields:[mediaId],references:[id],onDelete:Cascade)
+  type AssetType
+  storageKey String @unique
+  mime String
+  size BigInt
+  status String @default("READY")
+  @@unique([mediaId,type])
+}
+model UploadSession {
+  id String @id @default(uuid()) @db.Uuid
+  uploaderId String @db.Uuid
+  uploader User @relation(fields:[uploaderId],references:[id])
+  mediaId String @db.Uuid
+  media Media @relation(fields:[mediaId],references:[id])
+  storageKey String @unique
+  storageUploadId String?
+  expectedSize BigInt
+  status UploadStatus @default(OPEN)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([status,expiresAt])
+}
+model ProcessingJob {
+  id String @id @default(uuid()) @db.Uuid
+  mediaId String @db.Uuid
+  media Media @relation(fields:[mediaId],references:[id],onDelete:Cascade)
+  status String @default("PENDING")
+  attempts Int @default(0)
+  updatedAt DateTime @updatedAt
+  @@index([status])
+}
+model Playlist {
+  id String @id @default(uuid()) @db.Uuid
+  groupId String @db.Uuid
+  group Household @relation(fields:[groupId],references:[id],onDelete:Cascade)
+  name String
+  items PlaylistItem[]
+}
+model PlaylistItem {
+  playlistId String @db.Uuid
+  mediaId String @db.Uuid
+  playlist Playlist @relation(fields:[playlistId],references:[id],onDelete:Cascade)
+  media Media @relation(fields:[mediaId],references:[id],onDelete:Cascade)
+  position Int
+  @@id([playlistId,mediaId])
+  @@unique([playlistId,position])
+}
+model MediaPermission {
+  mediaId String @db.Uuid
+  userId String @db.Uuid
+  media Media @relation(fields:[mediaId],references:[id],onDelete:Cascade)
+  canView Boolean @default(true)
+  @@id([mediaId,userId])
+}
+model WatchProgress {
+  userId String @db.Uuid
+  mediaId String @db.Uuid
+  deviceId String? @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  media Media @relation(fields:[mediaId],references:[id],onDelete:Cascade)
+  device Device? @relation(fields:[deviceId],references:[id],onDelete:SetNull)
+  position Float
+  updatedAt DateTime @updatedAt
+  @@id([userId,mediaId])
+}
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String? @db.Uuid
+  actor User? @relation(fields:[actorId],references:[id],onDelete:SetNull)
+  action String
+  objectId String?
+  result String
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}

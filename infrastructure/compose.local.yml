@@ -1,0 +1,68 @@
+name: family-stream-local
+x-service: &service
+  image: family-stream-services:local
+  build:
+    { context: .., dockerfile: infrastructure/Dockerfile, target: services }
+  env_file: ../.env.local
+  environment:
+    # HTTP is limited to the computer's loopback interface. Public hosting uses compose.prod.yml.
+    NODE_ENV: development
+    APP_ORIGIN: http://localhost:8080
+    REDIS_URL: redis://redis:6379
+    PORT: 3000
+    OUTBOX_RECONCILE_MS: 3600000
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+services:
+  # Private Docker network only: no Redis port is published to the host or Internet.
+  redis:
+    image: redis:7.4-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes: ["redis:/data"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  migrate:
+    <<: *service
+    restart: "no"
+    command: ["pnpm", "db:migrate"]
+  api:
+    <<: *service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *service
+    command: ["pnpm", "--filter", "@family/worker", "start"]
+    depends_on: { api: { condition: service_healthy } }
+    mem_limit: 2g
+    cpus: 2
+  web:
+    build: { context: .., dockerfile: infrastructure/Dockerfile, target: web }
+    ports: ["127.0.0.1:8080:8080"]
+    restart: unless-stopped
+    depends_on: { api: { condition: service_healthy } }
+volumes:
+  redis:
